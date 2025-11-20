@@ -2,9 +2,10 @@ import {
     mdiCheckCircleOutline,
     mdiDelete,
     mdiPencil,
+    mdiDotsHorizontal,
 } from "@mdi/js";
 import { LitElement, html, nothing } from "lit";
-import { property, state } from "lit/decorators.js";
+import { property, state, query } from "lit/decorators.js";
 import type { HomeAssistant } from "custom-card-helpers";
 import { formatDateNumeric } from "custom-card-helpers";
 
@@ -58,6 +59,10 @@ export class HomeMaintenancePanel extends LitElement {
         label: [],
         tag: "",
     };
+
+    // Shared overflow menu state
+    @state() private _selectedTaskId: string | null = null;
+    @query("#actions-menu") private _actionsMenu?: any;
 
     private get _columns() {
         return {
@@ -167,24 +172,12 @@ export class HomeMaintenancePanel extends LitElement {
                 hideable: false,
                 type: "overflow-menu",
                 template: (task: Task) => html`
-                    <ha-icon-overflow-menu
-                        .hass=${this.hass}
-                        narrow
-                        .items=${[
-                        {
-                            label: localize('panel.cards.current.actions.edit', this.hass!.language),
-                            path: mdiPencil,
-                            action: () => this._handleOpenEditDialogClick(task.id),
-                        },
-                        {
-                            label: localize('panel.cards.current.actions.remove', this.hass!.language),
-                            path: mdiDelete,
-                            action: () => this._handleRemoveTaskClick(task.id),
-                            warning: true,
-                        },
-                    ]}
-                    >
-                    </ha-icon-overflow-menu>
+                    <ha-icon-button
+                        @click=${(e: Event) => this._handleShowMenu(task.id, e)}
+                        .label="Actions"
+                        title="Actions"
+                        .path=${mdiDotsHorizontal}
+                    ></ha-icon-button>
                 `,
             },
         }
@@ -434,6 +427,7 @@ export class HomeMaintenancePanel extends LitElement {
             </div>
 
             ${this.renderEditDialog()}
+            ${this.renderActionsMenu()}
         `;
     }
 
@@ -524,6 +518,35 @@ export class HomeMaintenancePanel extends LitElement {
                     ${localize('panel.dialog.edit_task.actions.save', this.hass.language)}
                 </mwc-button>
             </ha-dialog>
+        `;
+    }
+
+    renderActionsMenu() {
+        if (!this.hass) return html``;
+
+        return html`
+            <ha-md-menu id="actions-menu" positioning="fixed">
+                <ha-md-menu-item
+                    @click=${() => {
+                if (this._selectedTaskId) {
+                    this._handleOpenEditDialogClick(this._selectedTaskId);
+                }
+            }}
+                >
+                    <ha-svg-icon slot="start" path=${mdiPencil}></ha-svg-icon>
+                    ${localize('panel.cards.current.actions.edit', this.hass!.language)}
+                </ha-md-menu-item>
+                <ha-md-menu-item
+                    @click=${() => {
+                if (this._selectedTaskId) {
+                    this._handleRemoveTaskClick(this._selectedTaskId);
+                }
+            }}
+                >
+                    <ha-svg-icon slot="start" path=${mdiDelete}></ha-svg-icon>
+                    ${localize('panel.cards.current.actions.remove', this.hass!.language)}
+                </ha-md-menu-item>
+            </ha-md-menu>
         `;
     }
 
@@ -652,7 +675,18 @@ export class HomeMaintenancePanel extends LitElement {
         this._editFormData = { ...this._editFormData, ...ev.detail.value };
     }
 
-    static styles = commonStyle;
+    private _handleShowMenu(taskId: string, ev: Event) {
+        this._selectedTaskId = taskId;
+
+        if (!this._actionsMenu) {
+            return;
+        }
+
+        this._actionsMenu.anchorElement = ev.currentTarget as HTMLElement;
+        this._actionsMenu.show();
+
+        ev.stopPropagation();
+    } static styles = commonStyle;
 }
 
 customElements.define("home-maintenance-panel", HomeMaintenancePanel);
