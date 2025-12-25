@@ -129,12 +129,6 @@ export const commonStyle = css`
         flex: 1;
     }
 
-    .task-actions {
-        display: flex;
-        flex-direction: row;
-        gap: 0.5rem;
-    }
-
     .due-soon {
         color: var(--error-color, red);
         font-weight: bold;
